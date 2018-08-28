@@ -50,6 +50,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
     parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
     parser.add_argument('-r', '--rules-dir', default='rules', help='Directory containing rules in Auth0 format')
+    parser.add_argument('-d', '--dry-run', action='store_true', help="Show what would be done but don't actually make any changes")
     args = parser.parse_args()
 
     config = DotDict({'client_id': args.clientid, 'client_secret': args.clientsecret, 'uri': args.uri})
@@ -136,18 +137,19 @@ if __name__ == "__main__":
     ## Delete first in case we need to get some order numbers free'd
     for r in remove_rules:
         logger.debug("[-] Removing rule {} ({}) from Auth0".format(r.name, r.id))
-        authzero.delete_rule(r.id)
+        not args.dry_run and authzero.delete_rule(r.id)
 
     ## Update & Create (I believe this may be atomic swaps for updates)
     for r in local_rules:
         if r.is_new:
             logger.debug("[+] Creating new rule {} on Auth0".format(r.name))
-            ret = authzero.create_rule(r)
-            logger.debug("+ New rule created with id {}".format(ret.get('id')))
+            if not args.dry_run:
+                ret =  authzero.create_rule(r)
+                logger.debug("+ New rule created with id {}".format(ret.get('id')))
         elif r.is_the_same:
-            logger.debug("[=] Rule {} is unchanged, will no update".format(r.name))
+            logger.debug("[=] Rule {} is unchanged, will not update".format(r.name))
         else:
             logger.debug("[~] Updating rule {} ({}) on Auth0".format(r.name, r.id))
-            authzero.update_rule(r.id, r)
+            not args.dry_run and authzero.update_rule(r.id, r)
 
     sys.exit(0)
