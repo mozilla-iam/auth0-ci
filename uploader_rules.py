@@ -106,8 +106,8 @@ if __name__ == "__main__":
                    & (rule.stage == remote_rule.get('stage')) & (rule.order == remote_rule.get('order'))
             if not rule.is_the_same:
                 logger.debug('Difference found in {} :'.format(rule.name))
-                for line in difflib.unified_diff(remote_rule.get('script').splitlines(), rule.script.splitlines(), fromfile='auth0-%s' % rule.name,
-                                         tofile='local-%s' % rule.name):
+                for line in difflib.unified_diff(remote_rule.get('script').splitlines(), rule.script.splitlines(), fromfile='auth0-{}'.format(rule.name),
+                                         tofile='local-{}'.format(rule.name)):
                     logger.debug(line)
         else:
             # No remote rule match, so it's a new rule
