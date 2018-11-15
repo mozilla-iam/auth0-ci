@@ -119,11 +119,12 @@ if __name__ == "__main__":
     remove_rules = []
     for rl in local_rules:
         ok = False
+        rr = None
         for rr in remote_rules:
             if (rl.id == rr.get('id')) or (rl.is_new):
                 ok = True
                 continue
-        if not ok:
+        if not ok and rr is not None:
             remove_rules.append(rr)
     logger.debug("Found {} rules that not longer exist locally and will be deleted remotely".format(len(remove_rules)))
 

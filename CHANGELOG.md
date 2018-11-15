@@ -6,9 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 1.0.5 - 2018-11-15
 ### Changed
 
 - Support for only uploading rules that actually changed on local disk
+- Fix bug where uploader would fail if there were no rules present in auth0
 
 ## 1.0.4 - 2018-06-29
 ### Changed

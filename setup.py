@@ -11,7 +11,7 @@ from setuptools import setup
 
 setup(
     name="Auth0-ci",
-    version="1.0.4",
+    version="1.0.5",
     author="Guillaume Destuynder",
     author_email="gdestuynder@mozilla.com",
     py_modules=["uploader_login_page", "uploader_rules", "uploader_clients"],
