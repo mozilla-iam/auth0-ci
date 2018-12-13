@@ -57,6 +57,7 @@ if __name__ == "__main__":
     authzero = AuthZero(config)
     authzero.get_access_token()
     logger.debug("Got access token for client_id:{}".format(args.clientid))
+    dry_run_message = 'Dry Run : Action not taken : ' if args.dry_run else ''
 
     # on any error, `authzero` will raise an exception and python will exit with non-zero code
 
@@ -136,20 +137,23 @@ if __name__ == "__main__":
     # Update or create (or delete) rules as needed
     ## Delete first in case we need to get some order numbers free'd
     for r in remove_rules:
-        logger.debug("[-] Removing rule {} ({}) from Auth0".format(r.name, r.id))
+        logger.debug("[-] {}Removing rule {} ({}) from Auth0".format(
+            dry_run_message, r.name, r.id))
         not args.dry_run and authzero.delete_rule(r.id)
 
     ## Update & Create (I believe this may be atomic swaps for updates)
     for r in local_rules:
         if r.is_new:
-            logger.debug("[+] Creating new rule {} on Auth0".format(r.name))
+            logger.debug("[+] {}Creating new rule {} on Auth0".format(
+                dry_run_message, r.name))
             if not args.dry_run:
-                ret =  authzero.create_rule(r)
+                ret = authzero.create_rule(r)
                 logger.debug("+ New rule created with id {}".format(ret.get('id')))
         elif r.is_the_same:
             logger.debug("[=] Rule {} is unchanged, will not update".format(r.name))
         else:
-            logger.debug("[~] Updating rule {} ({}) on Auth0".format(r.name, r.id))
+            logger.debug("[~] {}Updating rule {} ({}) on Auth0".format(
+                dry_run_message, r.name, r.id))
             not args.dry_run and authzero.update_rule(r.id, r)
 
     sys.exit(0)
