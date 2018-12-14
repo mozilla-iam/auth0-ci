@@ -13,6 +13,7 @@ import logging
 import os
 import sys
 from authzero import AuthZero,AuthZeroRule
+import difflib
 
 class DotDict(dict):
     """return a dict.item notation for dict()'s"""
@@ -49,12 +50,14 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
     parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
     parser.add_argument('-r', '--rules-dir', default='rules', help='Directory containing rules in Auth0 format')
+    parser.add_argument('-d', '--dry-run', action='store_true', help="Show what would be done but don't actually make any changes")
     args = parser.parse_args()
 
     config = DotDict({'client_id': args.clientid, 'client_secret': args.clientsecret, 'uri': args.uri})
     authzero = AuthZero(config)
     authzero.get_access_token()
     logger.debug("Got access token for client_id:{}".format(args.clientid))
+    dry_run_message = 'Dry Run : Action not taken : ' if args.dry_run else ''
 
     # on any error, `authzero` will raise an exception and python will exit with non-zero code
 
@@ -102,7 +105,11 @@ if __name__ == "__main__":
             remote_rule = remote_rules[rule_nr[0]]
             rule.is_the_same = (rule.script == remote_rule.get('script')) & (rule.enabled == bool(remote_rule.get('enabled'))) \
                    & (rule.stage == remote_rule.get('stage')) & (rule.order == remote_rule.get('order'))
-
+            if not rule.is_the_same:
+                logger.debug('Difference found in {} :'.format(rule.name))
+                for line in difflib.unified_diff(remote_rule.get('script').splitlines(), rule.script.splitlines(), fromfile='auth0-{}'.format(rule.name),
+                                         tofile='local-{}'.format(rule.name)):
+                    logger.debug(line)
         else:
             # No remote rule match, so it's a new rule
             logger.debug('Rule only exists locally, considered new and to be created: {}'.format(rule.name))
@@ -131,19 +138,23 @@ if __name__ == "__main__":
     # Update or create (or delete) rules as needed
     ## Delete first in case we need to get some order numbers free'd
     for r in remove_rules:
-        logger.debug("[-] Removing rule {} ({}) from Auth0".format(r.name, r.id))
-        authzero.delete_rule(r.id)
+        logger.debug("[-] {}Removing rule {} ({}) from Auth0".format(
+            dry_run_message, r.name, r.id))
+        not args.dry_run and authzero.delete_rule(r.id)
 
     ## Update & Create (I believe this may be atomic swaps for updates)
     for r in local_rules:
         if r.is_new:
-            logger.debug("[+] Creating new rule {} on Auth0".format(r.name))
-            ret = authzero.create_rule(r)
-            logger.debug("+ New rule created with id {}".format(ret.get('id')))
+            logger.debug("[+] {}Creating new rule {} on Auth0".format(
+                dry_run_message, r.name))
+            if not args.dry_run:
+                ret = authzero.create_rule(r)
+                logger.debug("+ New rule created with id {}".format(ret.get('id')))
         elif r.is_the_same:
-            logger.debug("[=] Rule {} is unchanged, will no update".format(r.name))
+            logger.debug("[=] Rule {} is unchanged, will not update".format(r.name))
         else:
-            logger.debug("[~] Updating rule {} ({}) on Auth0".format(r.name, r.id))
-            authzero.update_rule(r.id, r)
+            logger.debug("[~] {}Updating rule {} ({}) on Auth0".format(
+                dry_run_message, r.name, r.id))
+            not args.dry_run and authzero.update_rule(r.id, r)
 
     sys.exit(0)
