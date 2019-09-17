@@ -107,6 +107,10 @@ if __name__ == "__main__":
             if not args.dry_run:
                 with open(js_filename, 'x') as f:
                     f.write(rule['script'])
+        print("To restore from this backup run {} --rules-dir {}".format(
+            os.path.basename(__file__),
+            args.backup_rules_to_directory
+        ))
         sys.exit(0)
 
     # Local rules loader
