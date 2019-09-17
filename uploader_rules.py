@@ -169,9 +169,9 @@ if __name__ == "__main__":
     ## Delete first in case we need to get some order numbers free'd
     for rule in rules_to_remove:
         logger.debug("[-] {}Removing rule {} ({}) from Auth0".format(
-            dry_run_message, rule.name, rule.id))
+            dry_run_message, rule['name'], rule['id']))
         if not args.dry_run:
-            authzero.delete_rule(rule.id)
+            authzero.delete_rule(rule['id'])
 
     ## Update & Create (I believe this may be atomic swaps for updates)
     for local_rule in local_rules:
