@@ -16,6 +16,9 @@ from authzero import AuthZero, AuthZeroRule
 import difflib
 
 
+MAINTENANCE_RULE_NAME = 'default-deny-for-maintenance'
+
+
 class NotARulesDirectory(Exception):
     pass
 
@@ -99,8 +102,14 @@ if __name__ == "__main__":
         with open(local_rules_file_js, 'r') as fd:
             local_rule.script = fd.read()
 
-        # Match with existing remote rule if we need to update.. this uses the rule name!
-        remote_rule_indexes = [i for i, _ in enumerate(remote_rules) if _.get('name') == local_rule.name]
+        if args.delete_all_rules_first_causing_outage and local_rule.name != MAINTENANCE_RULE_NAME:
+            # If we're deleting all rules, then we will create all rules anew
+            # after deletion with the exception of the maintenance rule
+            remote_rule_indexes = []
+        else:
+            # Match with existing remote rule if we need to update.. this uses the rule name!
+            remote_rule_indexes = [i for i, _ in enumerate(remote_rules) if _.get('name') == local_rule.name]
+
         if remote_rule_indexes:
             # If there's multi matches it means we have duplicate rule names and we're screwed.
             # To fix that we'd need to change the auth0 local format to use rule ids (which we could eventually)
@@ -112,12 +121,14 @@ if __name__ == "__main__":
 
             # Is the rule different?
             remote_rule = remote_rules[remote_rule_index]
-            local_rule.is_the_same = (
+            rules_match = (
                     (local_rule.script == remote_rule.get('script')) &
                     (local_rule.enabled == bool(remote_rule.get('enabled'))) &
                     (local_rule.stage == remote_rule.get('stage')) &
                     (local_rule.order == remote_rule.get('order')))
-            if not local_rule.is_the_same:
+            if rules_match:
+                local_rule.is_the_same = True
+            else:
                 logger.debug('Difference found in {} :'.format(local_rule.name))
                 for line in difflib.unified_diff(
                         remote_rule.get('script').splitlines(),
@@ -137,9 +148,22 @@ if __name__ == "__main__":
             local_rules.append(local_rule)
     logger.debug("Found {} local rules".format(len(local_rules)))
 
-    # Find dead rules (i.e. to remove/rules that only exist remotely)
-    rules_to_remove = [x for x in remote_rules if x.get('id') not in [y.id for y in local_rules]]
-    logger.debug("Found {} rules that not longer exist locally and will be deleted remotely".format(len(rules_to_remove)))
+    if args.delete_all_rules_first_causing_outage:
+        rules_to_remove = [x for x in remote_rules if x.get('name') != MAINTENANCE_RULE_NAME]
+        logger.debug("Found {} rules that will be deleted remotely".format(len(rules_to_remove)))
+    else:
+        # Find dead rules (i.e. to remove/rules that only exist remotely)
+        rules_to_remove = [x for x in remote_rules if x.get('id') not in [y.id for y in local_rules]]
+        logger.debug("Found {} rules that not longer exist locally and will be deleted remotely".format(len(rules_to_remove)))
+
+    maintenance_rule = next(
+        x for x in local_rules if x.name == MAINTENANCE_RULE_NAME)
+    if args.delete_all_rules_first_causing_outage:
+        maintenance_rule.enabled = True
+        logger.debug("[+] {}Enabling maintenance rule denying all logins globally {} {}".format(
+            dry_run_message, maintenance_rule.name, maintenance_rule.id))
+        if not args.dry_run:
+            authzero.update_rule(maintenance_rule.id, maintenance_rule)
 
     # Update or create (or delete) rules as needed
     ## Delete first in case we need to get some order numbers free'd
@@ -152,6 +176,8 @@ if __name__ == "__main__":
     ## Update & Create (I believe this may be atomic swaps for updates)
     for local_rule in local_rules:
         if local_rule.is_new:
+            if args.delete_all_rules_first_causing_outage and local_rule.name == MAINTENANCE_RULE_NAME:
+                continue
             logger.debug("[+] {}Creating new rule {} on Auth0".format(
                 dry_run_message, local_rule.name))
             if not args.dry_run:
@@ -164,5 +190,12 @@ if __name__ == "__main__":
                 dry_run_message, local_rule.name, local_rule.id))
             if not args.dry_run:
                 authzero.update_rule(local_rule.id, local_rule)
+
+    if args.delete_all_rules_first_causing_outage:
+        maintenance_rule.enabled = False
+        logger.debug("[-] {}Disabling maintenance rule {} {}".format(
+            dry_run_message, maintenance_rule.name, maintenance_rule.id))
+        if not args.dry_run:
+            authzero.update_rule(maintenance_rule.id, maintenance_rule)
 
     sys.exit(0)
