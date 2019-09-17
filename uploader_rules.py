@@ -38,6 +38,16 @@ class DotDict(dict):
             self[key] = value
 
 
+def empty_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    elif os.listdir(directory):
+        raise argparse.ArgumentTypeError(
+            "Directory {} is not empty. Please choose either a directory "
+            "which doesn't exist or an empty directory".format(directory))
+    return directory
+
+
 if __name__ == "__main__":
     # Logging
     logger_format = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
@@ -60,6 +70,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
     parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
     parser.add_argument('-r', '--rules-dir', default='rules', help='Directory containing rules in Auth0 format')
+    parser.add_argument('-b', '--backup-rules-to-directory', type=empty_directory, metavar='DIRECTORY', help='Download all rules from the API and save them to this directory.')
     parser.add_argument('--delete-all-rules-first-causing-outage', action='store_true', help="Before uploading rules, delete all rules causing an outage")
     parser.add_argument('-d', '--dry-run', action='store_true', help="Show what would be done but don't actually make any changes")
     args = parser.parse_args()
@@ -75,6 +86,28 @@ if __name__ == "__main__":
     # Remote rules loader
     remote_rules = authzero.get_rules()
     logger.debug("Loaded {} remote rules from current Auth0 deployment".format(len(remote_rules)))
+
+    if args.backup_rules_to_directory:
+        for rule in remote_rules:
+            js_filename = os.path.join(
+                args.backup_rules_to_directory,
+                '{}.js'.format(rule['name']))
+            metadata_filename = js_filename + 'on'
+            metadata = {
+                'enabled': rule['enabled'],
+                'order': rule['order']
+            }
+            logger.debug("{}Writing metadata file {}".format(
+                dry_run_message, metadata_filename))
+            if not args.dry_run:
+                with open(metadata_filename, 'x') as f:
+                    json.dump(metadata, f, sort_keys=True, indent=4, separators=(',', ': '))
+            logger.debug("{}Writing js file {}".format(
+                dry_run_message, js_filename))
+            if not args.dry_run:
+                with open(js_filename, 'x') as f:
+                    f.write(rule['script'])
+        sys.exit(0)
 
     # Local rules loader
     if not os.path.isdir(args.rules_dir):
