@@ -74,15 +74,19 @@ page" setup in Auth0 and looking at your web-browser dev tools network tab. Clic
 SCOPES: `read:rules`, `update:rules`, `delete:rules`, `create:rules`
 
 ```
-usage: uploader_rules.py [-h] [-u URI] -c CLIENTID -s CLIENTSECRET
-                         [-r RULES_DIR]
+usage: uploader_rules.py [-h] [-u URI] [-c CLIENTID] [-s CLIENTSECRET]
+                         [-r RULES_DIR] [-b DIRECTORY]
+                         [--delete-all-rules-first-causing-outage] [-d]
 ```
 
-Example: `./uploader_rules.py -u auth-dev.mozilla.auth0.com -c AAA -s BBB -r rules`
+Example: 
+
+`./uploader_rules.py --uri auth-dev.mozilla.auth0.com --clientid AAA --clientsecret BBB --rules-dir rules`
 
 Where the `rules` directory contains JSON and JS documents such as these:
 
 AccessRules.json:
+
 ```
 {
     "enabled": true,
@@ -91,6 +95,7 @@ AccessRules.json:
 ```
 
 AccessRules.js:
+
 ```
 function (user, context, callback) {
   ...code here...
@@ -100,6 +105,30 @@ function (user, context, callback) {
 ```
 
 Note that this is the Auth0 GitHub extension rule format.
+
+To do deploy a set of changed rules safely
+
+* Confirm `credentials.json` contains credentials for the environment you want
+  to affect
+* Make a local backup of the current live rules
+  * `./uploader_rules.py --backup-rules-to-directory production-backup`
+* Show what would be changed if you deployed your new local rules
+  * `./uploader_rules.py --dry-run --rules-dir ../auth0-deploy/rules`
+* Actually deploy the new local rules to the live environment
+  * `./uploader_rules.py --rules-dir ../auth0-deploy/rules`
+* Test the live environment to see if everything is working
+* If there's a problem
+  * Show what would be changed if you reverted to your local backup
+    * `./uploader_rules.py --dry-run --rules-dir production-backup`
+  * Deploy the local backup to rollback your change
+    * `./uploader_rules.py --rules-dir production-backup`
+  * If there's a bug in `uploader_rules.py` and deploying the backup doesn't work
+    * Show what would be changed if you deployed your local backup with the
+      `--delete-all-rules-first-causing-outage` enabled.
+      * `./uploader_rules.py --dry-run --delete-all-rules-first-causing-outage --rules-dir production-backup`
+    * Put Auth0 in maintenance mode, delete all rules, deploy your backup and
+      take Auth0 out of maintenance mode
+      * `./uploader_rules.py --delete-all-rules-first-causing-outage --rules-dir production-backup`
 
 ### uploader_clients.py
 SCOPES: `read:clients`, `update:clients`, `delete:clients`, `create:clients`
