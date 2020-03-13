@@ -82,8 +82,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', default=None, help='Path to credentials.json')
     parser.add_argument('-u', '--uri', default=credentials.uri, help='URI to Auth0 management API')
-    parser.add_argument('-i', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
-    parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
+    parser.add_argument('-i', '--clientid', default=credentials.client_id, help='Auth0 client id')
+    parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, help='Auth0 client secret')
     parser.add_argument('-r', '--rules-dir', default='rules', help='Directory containing rules in Auth0 format')
     parser.add_argument('-b', '--backup-rules-to-directory', type=empty_directory, metavar='DIRECTORY', help='Download all rules from the API and save them to this directory.')
     parser.add_argument('--delete-all-rules-first-causing-outage', action='store_true', help="Before uploading rules, delete all rules causing an outage")
@@ -100,6 +100,10 @@ if __name__ == "__main__":
         else:
             logger.error('Credentials file {} does not exist'.format(args.config))
             sys.exit(1)
+
+    if not args.clientid or not args.clientsecret:
+        logger.error('Missing client id and/or client secret')
+        sys.exit(1)
 
     authzero = AuthZero({
         'client_id': args.clientid,
@@ -220,7 +224,7 @@ if __name__ == "__main__":
             local_rules.append(local_rule)
     logger.debug("Found {} local rules".format(len(local_rules)))
 
-    if (len(local_rules)) == 0:
+    if len(local_rules) == 0:
         logger.error("Exiting to prevent deletion of all rules")
         sys.exit(1)
 
