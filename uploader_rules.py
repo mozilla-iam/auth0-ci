@@ -54,14 +54,12 @@ def parse_credential_files(filenames: list) -> tuple:
         'client_secret': '',
         'uri': 'auth-dev.mozilla.auth0.com',
     })
-    require_creds = True
     for filename in filenames:
         if os.path.exists(filename):
             with open(filename, 'r') as fd:
                 credentials = DotDict(json.load(fd))
-                require_creds = False
 
-    return (credentials, require_creds)
+    return credentials
 
 if __name__ == "__main__":
     CREDENTIAL_FILES = [
@@ -76,7 +74,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
 
     # Load the default credentials
-    credentials, require_creds = parse_credential_files(CREDENTIAL_FILES)
+    credentials = parse_credential_files(CREDENTIAL_FILES)
 
     # Arguments
     parser = argparse.ArgumentParser()
@@ -93,7 +91,7 @@ if __name__ == "__main__":
     # if we specify a file manually, open that, otherwise walk through the list of CREDENTIAL_FILES
     if args.config is not None:
         if os.path.exists(args.config):
-            credentials, require_creds = parse_credential_files([args.config])
+            credentials = parse_credential_files([args.config])
             args.clientid = credentials.client_id
             args.clientsecret = credentials.client_secret
             args.uri = credentials.uri
