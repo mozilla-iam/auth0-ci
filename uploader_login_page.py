@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--uri', default=credentials.uri, help='URI to Auth0 management API')
-    parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
+    parser.add_argument('-i', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
     parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
     parser.add_argument('--default-client', default='VNGM4quJw3Nhx28j8XKVYmu5LcPMCgAH',
                         help='Default Auth0 client id, needed for login page for example')

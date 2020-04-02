@@ -59,12 +59,12 @@ and can instead instantiate the tools like this
 SCOPES: `update:clients`
 
 ```
-usage: uploader_login_page.py [-h] [-u URI] -c CLIENTID -s CLIENTSECRET
+usage: uploader_login_page.py [-h] [-u URI] -i CLIENTID -s CLIENTSECRET
                               [--default-client DEFAULT_CLIENT] --login-page
                               LOGIN_PAGE
 ```
 
-Example: `./uploader_login_page.py -u auth-dev.mozilla.auth0.com -c AAA -s BBB --default-client CCC --login-page some.html`
+Example: `./uploader_login_page.py -u auth-dev.mozilla.auth0.com -i AAA -s BBB --default-client CCC --login-page some.html`
 
 Note that `CCC` above represents a special Auth0 "default" client. You can find this `client_id` by going to the "hosted
 page" setup in Auth0 and looking at your web-browser dev tools network tab. Click "preview page" and look for the
@@ -74,7 +74,7 @@ page" setup in Auth0 and looking at your web-browser dev tools network tab. Clic
 SCOPES: `read:rules`, `update:rules`, `delete:rules`, `create:rules`
 
 ```
-usage: uploader_rules.py [-h] [-u URI] [-c CLIENTID] [-s CLIENTSECRET]
+usage: uploader_rules.py [-h] [-u URI] [-i CLIENTID] [-s CLIENTSECRET]
                          [-r RULES_DIR] [-b DIRECTORY]
                          [--delete-all-rules-first-causing-outage] [-d]
 ```
@@ -133,17 +133,17 @@ To do deploy a set of changed rules safely
 ### uploader_clients.py
 SCOPES: `read:clients`, `update:clients`, `delete:clients`, `create:clients`
 ```
-usage: uploader_clients.py [-h] [-u URI] -c CLIENTID -s CLIENTSECRET
+usage: uploader_clients.py [-h] [-u URI] -i CLIENTID -s CLIENTSECRET
                            [-r CLIENTS_DIR] [-g]
-uploader_clients.py: error: the following arguments are required: -c/--clientid, -s/--clientsecret
+uploader_clients.py: error: the following arguments are required: -i/--clientid, -s/--clientsecret
 ```
 
-Example: `./uploader_clients.py -u auth-dev.mozilla.auth0.com -c AAA -s BBB -r clients`
+Example: `./uploader_clients.py -u auth-dev.mozilla.auth0.com -i AAA -s BBB -r clients`
 
 Where the `clients` directory contains JSON formated Auth0 client descriptions. You can get all current clients from
 your Auth0 deployment to provision the initial setup with:
 
-Example: `./uploader_clients.py -u auth-dev.mozilla.auth0.com -c AAA -s BBB -r clients -g`
+Example: `./uploader_clients.py -u auth-dev.mozilla.auth0.com -i AAA -s BBB -r clients -g`
 
 A client JSON file looks such as this:
 
