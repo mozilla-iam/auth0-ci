@@ -47,37 +47,74 @@ def empty_directory(directory):
             "which doesn't exist or an empty directory".format(directory))
     return directory
 
+def parse_credential_files(filenames: list) -> tuple:
+    # load the credentials file
+    credentials = DotDict({
+        'client_id': '',
+        'client_secret': '',
+        'uri': 'auth-dev.mozilla.auth0.com',
+    })
+    for filename in filenames:
+        if os.path.exists(filename):
+            with open(filename, 'r') as fd:
+                credentials = DotDict(json.load(fd))
+
+    return credentials
 
 if __name__ == "__main__":
+    CREDENTIAL_FILES = [
+        os.path.join(os.path.expanduser('~'), '.config', 'auth0', 'credentials.json'),
+        'credentials.json',
+    ]
+
     # Logging
     logger_format = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
     logging.basicConfig(format=logger_format, datefmt="%H:%M:%S", stream=sys.stdout)
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
-    # Default credentials loading
-    try:
-        with open('credentials.json', 'r') as fd:
-            credentials = DotDict(json.load(fd))
-            require_creds = False
-    except FileNotFoundError:
-        credentials = DotDict({'client_id': '', 'client_secret': '', 'uri': 'auth-dev.mozilla.auth0.com'})
-        require_creds = True
+    # Load the default credentials
+    credentials = parse_credential_files(CREDENTIAL_FILES)
 
     # Arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', default=None, help='Path to credentials.json')
     parser.add_argument('-u', '--uri', default=credentials.uri, help='URI to Auth0 management API')
-    parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
-    parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
+    parser.add_argument('-i', '--clientid', default=credentials.client_id, help='Auth0 client id')
+    parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, help='Auth0 client secret')
     parser.add_argument('-r', '--rules-dir', default='rules', help='Directory containing rules in Auth0 format')
     parser.add_argument('-b', '--backup-rules-to-directory', type=empty_directory, metavar='DIRECTORY', help='Download all rules from the API and save them to this directory.')
     parser.add_argument('--delete-all-rules-first-causing-outage', action='store_true', help="Before uploading rules, delete all rules causing an outage")
     parser.add_argument('-d', '--dry-run', action='store_true', help="Show what would be done but don't actually make any changes")
     args = parser.parse_args()
 
-    config = DotDict({'client_id': args.clientid, 'client_secret': args.clientsecret, 'uri': args.uri})
-    authzero = AuthZero(config)
-    authzero.get_access_token()
+    # if we specify a file manually, open that, otherwise walk through the list of CREDENTIAL_FILES
+    if args.config is not None:
+        if os.path.exists(args.config):
+            credentials = parse_credential_files([args.config])
+            args.clientid = credentials.client_id
+            args.clientsecret = credentials.client_secret
+            args.uri = credentials.uri
+        else:
+            logger.error('Credentials file {} does not exist'.format(args.config))
+            sys.exit(1)
+
+    if not args.clientid or not args.clientsecret:
+        logger.error('Missing client id and/or client secret')
+        sys.exit(1)
+
+    authzero = AuthZero({
+        'client_id': args.clientid,
+        'client_secret': args.clientsecret,
+        'uri': args.uri}
+    )
+
+    try:
+        authzero.get_access_token()
+    except Exception:
+        logger.error('Unable to get access token for client_id: {}'.format(args.clientid))
+        sys.exit(1)
+
     logger.debug("Got access token for client_id:{}".format(args.clientid))
     dry_run_message = 'Dry Run : Action not taken : ' if args.dry_run else ''
 
@@ -184,6 +221,10 @@ if __name__ == "__main__":
         else:
             local_rules.append(local_rule)
     logger.debug("Found {} local rules".format(len(local_rules)))
+
+    if len(local_rules) == 0:
+        logger.error("Exiting to prevent deletion of all rules")
+        sys.exit(1)
 
     if args.delete_all_rules_first_causing_outage:
         rules_to_remove = [x for x in remote_rules if x.get('name') != MAINTENANCE_RULE_NAME]

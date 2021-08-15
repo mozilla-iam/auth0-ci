@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-u', '--uri', default=credentials.uri, help='URI to Auth0 management API')
-    parser.add_argument('-c', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
+    parser.add_argument('-i', '--clientid', default=credentials.client_id, required=require_creds, help='Auth0 client id')
     parser.add_argument('-s', '--clientsecret', default=credentials.client_secret, required=require_creds, help='Auth0 client secret')
     parser.add_argument('-d', '--debug', action="store_true", help='Enable debug mode')
     parser.add_argument('-v', '--verbose', action="store_true", help='Show log messages on stderr instead of sending to syslog')
